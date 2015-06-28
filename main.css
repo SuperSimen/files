@@ -1,0 +1,125 @@
+html, body {
+	height: 100%;
+	margin: 0px;
+}
+
+.select-media {
+	padding: 15px 30px 15px 30px;
+	border-radius: 15px;
+
+	background-color: #667CCC;
+	
+}
+.center-vertical {
+	position: relative;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.controls {
+	font-size: 2em;
+}
+
+.control-bar {
+	display: inline-table;
+	width: 100%;
+}
+
+
+.device {
+	height: 200px;
+	text-align: center;
+	font-size: 2em;
+	border-radius: 6px;
+	margin-top: 15px;
+	margin-bottom: 15px;
+}
+
+.device.active {
+	height: 220px;
+	padding-bottom: 20px;
+	border-bottom-right-radius:0;
+	border-bottom-left-radius:0;
+
+	background-color: #667CCC;
+	margin-bottom: 0px;
+}
+
+
+.fill-height {
+	height: 100%;
+}
+.fill-height-under-navbar {
+	height: calc(100% - 72px);
+}
+
+.media {
+	text-align: center;
+	font-size: 2em;
+	padding-left: 0px !important;
+	padding-right: 0px !important;
+	height: 445px;
+}
+
+.no-border {
+	border-radius: 0px !important;
+}
+
+.pointer {
+	cursor: pointer;
+}
+
+.playing-video {
+	width: 100%;
+}
+.center-video {
+	margin-left: auto;
+	margin-right: auto;
+	display: block
+}
+
+
+.align-center {
+	text-align: center;
+}
+
+
+.background-black {
+	background-color: black;
+}
+
+
+
+.background-color {
+	background-color: #1B2A50;
+}
+
+.color-1 {
+	background-color: #C34D4B;
+}
+
+.color-2 {
+	background-color: #34499D;
+}
+
+.color-3 {
+	background-color: #B3B7E6;
+}
+
+.color-4 {
+	background-color: #F2D9EC;
+}
+
+.color-5 {
+	background-color: #E7C9ED;
+}
+
+.color-6 {
+	background-color: #C8A3E0;
+}
+
+.color-7 {
+	background-color: #9479D2;
+}
+
+
