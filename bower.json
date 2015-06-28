@@ -17,6 +17,7 @@
     "angular": "~1.2.26",
     "angular-ui-router": "~0.2.11",
     "bootstrap": "~3.2.0",
-    "coral-angular-module": "*"
+    "coral-angular-module": "*",
+    "files-angular-module": "*"
   }
 }

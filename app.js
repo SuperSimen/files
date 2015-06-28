@@ -1,4 +1,4 @@
-var app = angular.module('app', ['ui.router', 'coral', 'config']);
+var app = angular.module('app', ['ui.router', 'coral', 'fileTransfer', 'config']);
 
 (function() {
     'use strict';
@@ -34,5 +34,6 @@ var app = angular.module('app', ['ui.router', 'coral', 'config']);
         };
 
     });
+
 
 })();
