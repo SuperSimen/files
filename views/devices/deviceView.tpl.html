@@ -1,0 +1,13 @@
+<div ng-repeat="device in devices" class="col-md-3">
+    <div class="device" ng-class="getClass(device)" ng-click="clickOnDevice(device)">
+        <div class="center-vertical">
+            {{device.className}}
+            <div ng-show="device.name">
+                {{device.name}}
+            </div>
+            <div ng-hide="device.name">
+                {{device.id}}
+            </div>
+        </div>
+    </div>
+</div>
