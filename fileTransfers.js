@@ -1,30 +1,104 @@
 (function() {
-    'use strict';
 
     app.factory('transfers', function(coral, fileTransfer) {
 
         var list = {};
 
-        function newTransfer(id) {
+        function messageHandler(data) {
+            var message = data.message;
+
+            console.log(data);
+            if (message.type === "file") {
+
+                //transfers.get(device.id).onmessage(message.message);
+            }
+            else if (message.type === "signal") {
+                console.log("received signal message");
+                console.log(message);
+                var signal = message.message;
+                if (signal.type === "offer") {
+                    console.log("received offer");
+                    newTransfer(data.fromId, signal.data);
+                }
+                else if (signal.type  === "answer") {
+                    list[data.fromId].peerConnection.setRemoteDescription(
+                        new RTCSessionDescription(signal.data),
+                        function() {},
+                        function(err) {
+                            console.log(err);
+                        }
+                    );
+                    list[data.fromId].iceCandidates.setReadyToSend(true);
+                }
+                else if (signal.type === "ice") {
+                    var ice = new RTCIceCandidate(signal.data);
+                    list[data.fromId].peerConnection.addIceCandidate(ice, function() {
+                        console.log("added ice");
+                    },
+                    function(err) {
+                        console.log(err);
+                    }
+                                                                    );
+                }
+            }
+            else {
+                console.error("message type unrecognized");
+                console.log(data);
+            }
+        }
+
+        function newTransfer(id, offer) {
+            console.log("new transfer " + id);
             var transfer = fileTransfer.newTransfer();
-            var peerConnection = createPeerConnection(id);
 
             list[id] = {
-                peerConnection: peerConnection,
                 transfer: transfer,
                 sendOnCoral: function(message) {
-                    coral.sendMessage(id, createFileMessage(message));
-                },
+                    coral.sendMessage(id, createSignalMessage(message));
+                }, 
                 sendOnWebRTC: function(message) {
-
-                }
+                    if (this.dataChannel) {
+                        this.dataChannel.send(JSON.stringify(message));
+                    }
+                    else {
+                        console.log("no channel available");
+                    }
+                },
             };
 
-            transfer.setSender(
-                list[id].sendOnWebRTC
-            );
+            list[id].iceCandidates = createIceCandidates(id);
+            list[id].peerConnection = createPeerConnection(id, offer);
 
-            createPeerConnection(id);
+            function createIceCandidates(id) {
+                return {
+                    ICElist: [],
+                    readyToSend: false,
+                    setReadyToSend: function(ready) {
+                        this.readyToSend = ready;
+                        if (ready && this.ICElist.length) {
+                            this.sendAndEmptyIceCandidates();
+                        }
+                    },
+                    addIceCandidate: function (candidate) {
+                        this.ICElist.push(candidate);
+                        if (this.readyToSend) {
+                            this.sendAndEmptyIceCandidates();
+                        }
+                    },
+                    sendAndEmptyIceCandidates: function() {
+                        console.log("sending ice");
+                        for (var i in this.ICElist) {
+                            list[id].sendOnCoral({type: "ice", data:this.ICElist[i]});
+                        }
+                        this.ICElist.length = 0;
+                    }
+
+                };
+            }
+
+            transfer.setSender(function(data, callback) {
+                list[id].sendOnWebRTC(data);
+            });
         }
 
         var options = {
@@ -48,42 +122,67 @@
         }
 
 
-        function createPeerConnection(id, sendCallback) {
-            peerConnection = new RTCPeerConnection(options);
+        function createPeerConnection(id, offer) {
+            var peerConnection = new webkitRTCPeerConnection(options);
 
-            var dataChannel = peerConnection.createDataChannel("dataChannel", {
-                ordered: false
-            });
+            peerConnection.onicecandidate = function(event) {
+                console.log("incoming ice");
+                if (event.candidate) {
+                    list[id].iceCandidates.addIceCandidate(event.candidate);
+                }
+            };
 
-            dataChannel.onopen = function() {
-                dataChannel.send('hi');
+            peerConnection.ondatachannel = function(event) {
+                setupDataChannel(event.channel, id);
+            };
+
+            if (offer) {
+                peerConnection.setRemoteDescription(
+                    new RTCSessionDescription(offer),
+                    function() {},
+                    function(err) {
+                        console.log(err);
+                    }
+                );
+
+                peerConnection.createAnswer(function(answer) {
+                    peerConnection.setLocalDescription(answer);
+
+                    list[id].sendOnCoral({type:"answer", data:answer});
+                });
+
+                list[id].iceCandidates.setReadyToSend(true);
             }
+            else {
 
-            peerConnection.createOffer(function(offer) {
-                peerConnection.setLocalDescription(offer);
+                var dataChannel = peerConnection.createDataChannel("dataChannel", {
+                    ordered: false
+                });
 
-                //send offer
-            });
+                setupDataChannel(dataChannel, id);
+
+                peerConnection.createOffer(function(offer) {
+                    peerConnection.setLocalDescription(offer);
+
+                    list[id].sendOnCoral({type:"offer", data:offer});
+                });
+            }
 
             return peerConnection;
         }
 
-        function answer(offer) {
-            peerConnection.setRemoteDescription(
-                new RTCSessionDescription(offer),
-                function() {
-                    //Success callback
-                },
-                function(err) {
-                    //Error callback
-                    console.log(err);
-                }
-            );
+        function setupDataChannel(dataChannel, id) {
+            dataChannel.onopen = function() {
+                console.log("data channel opened");
+            };
 
-            peerConnection.createAnswer(function(answer) {
-                peerConnection.setLocalDescription(answer);
-                //send answer
-            });
+            dataChannel.onmessage = function(event) {
+                console.log(event.data);
+                list[id].transfer.onmessage(JSON.parse(event.data));
+            };
+
+            list[id].dataChannel = dataChannel;
+
         }
 
         function createFileMessage(message) {
@@ -93,12 +192,24 @@
             }
         }
 
+        function createSignalMessage(message) {
+            return {
+                message: message,
+                type: "signal"
+            }
+        }
+
+        function getTransfer(id) {
+            if (!list[id]) {
+                newTransfer(id);
+            }
+            return list[id].transfer;
+        }
+
         return {
-            get: function(id) {
-                if (!list[id]) {
-                    newTransfer(id);
-                }
-                return list[id].transfer;
+            get: getTransfer,
+            init: function() {
+                coral.on("message", messageHandler);
             }
         }
     });

@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    app.factory('welcome', function($rootScope, coral, devices, constants) {
+    app.factory('welcome', function($rootScope, coral, devices, constants, transfers) {
         var welcome = {
             init: function() {
                 $rootScope.values = {
@@ -16,6 +16,7 @@
                     console.log('connected');
                     $rootScope.goToState("devices");
                     devices.init();
+                    transfers.init();
 
                 });
             },

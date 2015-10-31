@@ -6,7 +6,6 @@
         var devices = {
             init: function() {
                 coral.on("presence", presenceHandler);
-                coral.on("message", messageHandler);
                 coral.subscribe("presence", "all", "");
             },
             list: [],
@@ -49,18 +48,6 @@
             });
         }
 
-        function messageHandler(data) {
-            var message = data.message;
-            var device = devices.get(data.fromId);
-
-            if (message.type === "file") {
-                transfers.get(device.id).onmessage(message.message);
-            }
-            else {
-                console.error("message type unrecognized");
-                console.log(data);
-            }
-        }
 
         return devices;
 
