@@ -17,6 +17,9 @@ var app = angular.module('app', ['ui.router', 'coral', 'fileTransfer', 'config']
         }).state('devices', {
             controller: "deviceController",
             templateUrl: "views/devices/deviceView.tpl.html"
+        }).state('chat', {
+            controller: "chatController",
+            templateUrl: "views/chat/chatView.tpl.html"
         });
     });
 
@@ -30,10 +33,9 @@ var app = angular.module('app', ['ui.router', 'coral', 'fileTransfer', 'config']
             networkName: "files",
             className: "filesClient",
             wsUrl: config.coralServer.getWebSocket(),
-            debug: config.debug
+            debug: true
         };
 
     });
-
 
 })();

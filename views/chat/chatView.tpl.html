@@ -1,0 +1,14 @@
+<input type="file" ft-file-uploader />
+
+<div ng-repeat="connection in connections">
+    <div class="device" ng-click="clickOnConnection(connection)">
+        <div class="center-vertical">
+            <div ng-show="device.name">
+                {{connection.name}}
+            </div>
+            <div ng-hide="device.name">
+                {{connection.id}}
+            </div>
+        </div>
+    </div>
+</div>
