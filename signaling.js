@@ -1,8 +1,8 @@
 (function() {
     'use strict';
 
-    app.factory('signaling', function(coral, fileTransfer) {
-        var messenger = {
+    app.factory('signaling', function(coral) {
+        var signaling = {
             init: function() {
                 coral.on('message', messageHandlers.mainHandler);
             },
@@ -26,25 +26,29 @@
             mainHandler: function(data) {
                 console.log(data);
 
-                var type = data.type;
-                var message = data.message;
+                var message = data.message.message;
                 var from = data.fromId;
+                var type = data.message.type;
 
-                var handlers = this.handlers[type];
+                var handlers = messageHandlers.handlers[type];
+
+                console.log(type);
+
                 if (handlers) {
                     var currentHandler;
                     for (var i in handlers) {
                         currentHandler = handlers[i];
+                        console.log(currentHandler);
                         if (currentHandler.sender) {
                             if (currentHandler.sender === from) {
-                                currentHandler(message, from);
+                                currentHandler.handler(from, message);
                             }
                             else {
                                 noHandlerError(data);
                             }
                         }
                         else {
-                            currentHandler(message, from);
+                            currentHandler.handler(from, message);
                         }
                     }
                 }
@@ -67,6 +71,6 @@
         }
 
 
-        return messenger;
+        return signaling;
     });
 })();

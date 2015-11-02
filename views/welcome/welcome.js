@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    app.factory('welcome', function($rootScope, coral, devices, constants, transfers) {
+    app.factory('welcome', function($rootScope, coral, constants, connections) {
         var welcome = {
             init: function() {
                 $rootScope.values = {
@@ -14,10 +14,8 @@
 
                 coral.connect(constants, function() {
                     console.log('connected');
-                    $rootScope.goToState("devices");
-                    devices.init();
-                    transfers.init();
-
+                    //$rootScope.goToState("chat");
+                    connections.init();
                 });
             },
         };

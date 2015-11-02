@@ -1,84 +1,46 @@
 (function() {
     'use strict';
 
-    app.factory('webrtc', function(coral, signaling) {
+    app.factory('webrtc', function(coral, signaling, $timeout) {
 
         var webrtc = {
             connect: connect
         };
 
-        function createIceHandler(peerConnection) {
-            return function (from, iceCandidate) {
-                var ice = new RTCIceCandidate(iceCandidate);
-                peerConnection.addIceCandidate(
-                    ice,
-                    function() {},
-                    function(err) {
-                        console.log(err);
-                    }
-                );
-            }
-        }
-
-        function createAnswerHandler(peerConnection, iceCandidates) {
-            return function (from, answer) {
-                connections[data.fromId].peerConnection.setRemoteDescription(
-                    new RTCSessionDescription(answer),
-                    function() {},
-                    function(err) {
-                        console.log(err);
-                    }
-                );
-                iceCandidates.setReadyToSend(true);
-            }
-        }
-
-        function connect(to, successCallback, offer) {
-
-            var iceCandidates = createIceCandidates(id);
+        function connect(to, offer) {
+            var iceCandidates = createIceCandidates(to);
             var peerConnection = new webkitRTCPeerConnection(options);
 
-            var answerHandler = createAnswerHandler(peerConnection, iceCandidates);
-            signaling.addMessageHandler(answerHandler, "answer", to);
+            setupConnectionHandlers(peerConnection, iceCandidates, to);
 
-            var iceHandler = createIceHandler(peerConnection);
-            signaling.addMessageHandler(iceHandler, "ice", to);
+            var messenger = {
+                incoming: null,
+                outgoing: null
+            };
 
-            peerConnection.onicecandidate = function(event) {
-                if (event.candidate) {
-                    iceCandidates.addIceCandidate(event.candidate);
+            continueConnect(peerConnection, iceCandidates, to, messenger, offer);
+
+            var connection = {
+                send: function(message) {
+                    if (messenger.outgoing) {
+                        messenger.outgoing(message);
+                    }
+                    else {
+                        console.error("cannot send message. No sender function");
+                    }
+                },
+                setReceiver: function(handler) {
+                    if (messenger.incoming) {
+                        console.error("webrtc handler already set");
+                    }
+                    else {
+                        messenger.incoming = handler;
+                    }
                 }
             };
 
-            peerConnection.ondatachannel = function(event) {
-                setupDataChannel(event.channel, id);
-            };
-
-            if (offer) {
-                peerConnection.setRemoteDescription(
-                    new RTCSessionDescription(offer),
-                    function() {},
-                    function(err) {
-                        console.log(err);
-                    }
-                );
-
-                sendAnswer(id, peerConnection, offer);
-                iceCandidates.setReadyToSend(true);
-            }
-            else {
-                var dataChannel = peerConnection.createDataChannel("dataChannel", {
-                    ordered: false
-                });
-
-                setupDataChannel(dataChannel, id);
-
-                sendOffer(id, peerConnection);
-            }
-
-            successCallback(messageSender); 
+            return connection;
         }
-
 
         function createIceCandidates(id) {
             return {
@@ -86,11 +48,13 @@
                 readyToSend: false,
                 setReadyToSend: function(ready) {
                     this.readyToSend = ready;
+                    console.log("ready to send");
                     if (ready && this.ICECandidates.length) {
                         this.sendAndEmptyIceCandidates();
                     }
                 },
                 addIceCandidate: function (candidate) {
+                    console.log("adding ice candidate");
                     this.ICECandidates.push(candidate);
                     if (this.readyToSend) {
                         this.sendAndEmptyIceCandidates();
@@ -105,6 +69,169 @@
 
             };
         }
+
+        function setupConnectionHandlers(peerConnection, iceCandidates, to) {
+            var answerHandler = createAnswerHandler(peerConnection, iceCandidates);
+            signaling.addMessageHandler(answerHandler, "answer", to);
+
+            var iceHandler = createIceHandler(peerConnection);
+            signaling.addMessageHandler(iceHandler, "ice", to);
+        }
+
+        function continueConnect(peerConnection, iceCandidates, id, messenger, offer) {
+            peerConnection.onicecandidate = function(event) {
+                console.log("on ice candidate");
+                console.log(event);
+                if (event.candidate) {
+                    iceCandidates.addIceCandidate(event.candidate);
+                }
+            };
+
+            if (offer) {
+                peerConnection.ondatachannel = function(event) {
+                    setupDataChannel(event.channel, id, messenger);
+                };
+
+                setRemoteDescription(peerConnection, offer);
+
+                createAnswerAndSend(id, peerConnection, offer);
+                iceCandidates.setReadyToSend(true);
+            }
+            else {
+                var dataChannel = peerConnection.createDataChannel("dataChannel", {
+                    ordered: false
+                });
+
+                setupDataChannel(dataChannel, id, messenger);
+
+                createOfferAndSend(id, peerConnection);
+
+                console.log("here");
+
+            }
+        }
+
+        function createAnswerHandler(peerConnection, iceCandidates) {
+            return function (from, answer) {
+                console.log("received answer");
+                setRemoteDescription(peerConnection, answer);
+                iceCandidates.setReadyToSend(true);
+            }
+        }
+
+        function createIceHandler(peerConnection) {
+            return function (from, iceCandidate) {
+                console.log("received ice");
+                var ice = new RTCIceCandidate(iceCandidate);
+                peerConnection.addIceCandidate(
+                    ice,
+                    function() {},
+                    function(err) {
+                        console.log(err);
+                    }
+                );
+            }
+        }
+
+        function setupDataChannel(dataChannel, id, messenger) {
+            var dataSender = createDataSender(dataChannel);
+
+            dataChannel.onopen = function() {
+                console.log("data channel opened");
+
+                messenger.outgoing = function(message) {
+                    dataSender.addToQueue(message);
+                }
+            };
+
+            dataChannel.onmessage = function(event) {
+                console.log(event.data);
+                if (messenger.incoming) {
+                    messenger.incoming(JSON.parse(event.data));
+                }
+                else {
+                    console.error("No handler for incoming webrtc data");
+                }
+
+                connections[id].transfer.onmessage(JSON.parse(event.data));
+            };
+
+
+        }
+
+        function createDataSender(dataChannel) {
+            var dataSender = {
+                queue: [],
+                sendingData: false,
+                send: function(data, callback) {
+                    if (dataChannel.bufferedAmount === 0) {
+                        var message = JSON.stringify(data);
+                        dataChannel.send(message);
+
+                        if (callback) {
+                            callback("sent");
+                        }
+                        return true;
+                    }
+                    else {
+                        return false
+                    }
+                },
+                sender: function() {
+                    while(this.queue.length) {
+                        var success = this.send(this.queue[0]);
+                        if (!success) {
+                            $timeout(this.restartDataSender, 100);
+                            return;
+                        }
+                        else {
+                            this.queue.shift();
+                        }
+                    }
+                    this.sendingData = false;
+
+                },
+                addToQueue: function(data) {
+                    this.queue.push(data);
+
+                    if (!this.sendingData) {
+                        this.sendingData = true;
+                        this.restartDataSender();
+                    }
+                },
+
+            };
+
+        }
+
+
+        function setRemoteDescription(peerConnection, sdp) {
+            peerConnection.setRemoteDescription(
+                new RTCSessionDescription(sdp),
+                function() {},
+                function(err) {
+                    console.log(err);
+                }
+            );
+        }
+
+        function createOfferAndSend(id, peerConnection) {
+            peerConnection.createOffer(function(offer) {
+                peerConnection.setLocalDescription(offer);
+
+                signaling.send(id, "offer", offer);
+            });
+
+        }
+
+        function createAnswerAndSend(id, peerConnection, offer) {
+            peerConnection.createAnswer(function(answer) {
+                peerConnection.setLocalDescription(answer);
+
+                signaling.send(id, "answer", answer);
+            });
+        }
+
         var options = {
             iceServers: [
                 {
@@ -123,39 +250,6 @@
                     username: '28224511:1379330808'
                 }
             ]
-        }
-
-
-        function sendOffer(id, peerConnection) {
-            peerConnection.createOffer(function(offer) {
-                peerConnection.setLocalDescription(offer);
-
-                signaling.send(id, "offer", offer);
-            });
-
-        }
-
-        function sendAnswer(id, peerConnection, offer) {
-            peerConnection.createAnswer(function(answer) {
-                peerConnection.setLocalDescription(answer);
-
-                signaling.send(id, "answer", answer);
-            });
-
-        }
-
-        function setupDataChannel(dataChannel, id) {
-            dataChannel.onopen = function() {
-                console.log("data channel opened");
-            };
-
-            dataChannel.onmessage = function(event) {
-                console.log(event.data);
-                connections[id].transfer.onmessage(JSON.parse(event.data));
-            };
-
-            connections[id].dataChannel = dataChannel;
-
         }
 
         return webrtc;

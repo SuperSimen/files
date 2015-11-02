@@ -2,84 +2,153 @@
 
     'use strict';
 
-    app.factory('connections', function(coral, fileTransfer, signaling) {
-
+    app.factory('connections', function(coral, fileTransfer, signaling, webrtc, $rootScope) {
+        
         var connections = {};
 
-        signaling.addMessageHandler("offer", offerHandler);
+        var returnObject = {
+            list: connections,
+            get: getConnection,
+            connect: getConnectionAndConnect,
+            init: function() {
+                signaling.init();
+                coral.on("presence", presenceHandler);
+                coral.subscribe("presence", "all", "");
 
-        function offerHandler(from, offer) {
-            if (connections[from]) {
-                console.log("Received unwanted offer");
+                signaling.addMessageHandler(offerHandler, "offer");
             }
-            else {
-                createP2PConnection(from, offer);
-            }
-            newTransfer(data.fromId, signal.data);
+        };
+
+        function getConnection(id) {
+            return connections[id];
         }
 
-        function createP2PConnection(to, offer) {
-            var connection = connections[to];
-            if (connection) {
-                if (!connection.connected) {
-                    connection.connect(offer);
+        function getConnectionAndConnect(id) {
+            var connection = connections[id];
+            if (!connection.webrtcConnection) {
+                connection.connect();
+            }
+            return connection;
+
+        }
+
+        function setOnlineStatus(listOfOnlineIds) {
+            for (var id in connections) {
+                if (listOfOnlineIds[id]) {
+                    connections[id].online = true;
+                }
+                else {
+                    connections[id].online = false;
                 }
             }
-            else {
-                connection = newConnection(to);
-                connection.connect(offer);
-            }
         }
 
-        function newConnection(id) {
-            var transfer = fileTransfer.newTransfer();
+        function presenceHandler(data) {
+            var currentUser;
+            var listOfOnlineUsers = data.presence;
+            var listOfOnlineIds = {};
+            for (var i in listOfOnlineUsers) {
+                currentUser = listOfOnlineUsers[i];
+                listOfOnlineIds[currentUser.id] = true;
 
-            connections[id] = {
-                connected: false,
-                connect: function(offer) {
-
-                    webrtcConnection = webrtc.connect(
-                        id,
-                        function() {
-                            connections[id].connected = true;
-                        },
-                        offer
-                    );
-                },
-                sendMessage: null,
-                transfer: transfer,
-                sendOnWebRTC: function(message) {
-                    if (this.dataChannel) {
-                        this.dataChannel.send(JSON.stringify(message));
-                    }
-                    else {
-                        console.log("no channel available");
-                    }
-                },
-            };
-
-
-
-            transfer.setSender(function(data, callback) {
-                connections[id].sendOnWebRTC(data);
+                if (!connections[currentUser.id]) {
+                    var connection = createAndAddConnection(currentUser.id);
+                    connection.name = currentUser.name;
+                }
+            }
+            $rootScope.$apply(function() {
+                setOnlineStatus(listOfOnlineIds);
             });
         }
 
 
-
-
-        function getTransfer(id) {
-            if (!connections[id]) {
-                newConnection(id);
+        function offerHandler(from, offer) {
+            var connection = getConnection(from);
+            console.log(from);
+            console.log(connection);
+            console.log(connections);
+            if (connection) {
+                connection.connect(offer);
             }
-            return connections[id].transfer;
-        }
-
-        return {
-            get: getTransfer,
-            init: function() {
-                coral.on("message", messageHandler);
+            else {
+                console.log("Received unwanted offer");
             }
         }
+
+        function createAndAddConnection(id) {
+            var connection = createConnection(id);
+            addConnection(id, connection);
+            return connection;
+        }
+
+        function addConnection(id, connection) {
+            if (connections[id]) {
+                return console.error("cannot add connection, id already exists");
+            }
+
+            connections[id] = connection;
+        }
+
+        function createConnection(id) {
+
+            var transfer = fileTransfer.newTransfer();
+            var connection = createConnectionObject(id, transfer);
+
+            transfer.setSender(function(message, callback) {
+                connection.sendFileMessage(message);
+            });
+
+            return connection;
+        }
+
+        function createConnectionObject(id, transfer) {
+            var connectionObject = {
+                online: false,
+                webrtcConnection: null,
+                id: id,
+                name: null,
+                connect: function(offer) {
+                    this.webrtcConnection = webrtc.connect(id, offer);
+                    var receiver = createReceiver(id);
+                    this.webrtcConnection.setReceiver(receiver);
+                },
+                transfer: transfer,
+                sendData: function(data) {
+                    if (this.webrtcConnection) {
+                        this.webrtcConnection.send(data);
+                    }
+                    else {
+                        console.error("Cannot send. No webrtc connection available");
+                    }
+                },
+                sendMessage: function(message) {
+                    var messageObject = {
+                        type: "message",
+                        message: message,
+                    };
+                    this.sendData(messageObject);
+                },
+                sendFileMessage: function(fileMessage) {
+                    var fileMessageObject = {
+                        type: "file",
+                        message: fileMessage,
+                    };
+                    this.sendData(fileMessageObject);
+                },
+                sendFile: function(file) {
+                    this.transfer.sendFile(file);
+                }
+            };
+
+            return connectionObject;
+        }
+
+        function createReceiver(id) {
+            return function (message) {
+                console.log(message);
+            }
+        }
+
+        return returnObject;
     });
 })();

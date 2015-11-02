@@ -14,18 +14,15 @@ var app = angular.module('app', ['ui.router', 'coral', 'fileTransfer', 'config']
         $stateProvider.state('welcome', {
             controller: "welcomeController",
             templateUrl: "views/welcome/welcomeView.tpl.html"
-        }).state('devices', {
-            controller: "deviceController",
-            templateUrl: "views/devices/deviceView.tpl.html"
         }).state('chat', {
             controller: "chatController",
             templateUrl: "views/chat/chatView.tpl.html"
         });
     });
 
-    app.run( function ($state, welcome, devices) {
+    app.run( function ($state, welcome) {
         welcome.connect();
-        $state.go("devices");
+        $state.go("chat");
     });
 
     app.factory('constants', function(config) {

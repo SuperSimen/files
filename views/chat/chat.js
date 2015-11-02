@@ -1,50 +1,19 @@
+var globalUsers;
+
 (function() {
     'use strict';
 
-    app.factory('chat', function($rootScope, coral, fileTransfer, transfers) {
+    app.controller('chatController', function($scope, connections) {
 
-        var chat = {
-            init: function() {
-            }
+        globalUsers = connections.list;
+        $scope.users = connections.list;
+        $scope.clickOnUser = function(user) {
+            var connection = connections.connect(user.id);
+            connection.sendFile();
+            console.log("clicked on " + user);
         };
-
-        return devices;
 
     });
 
-    app.controller('chatController', function() {
-
-        $scope.clickOnDevice = function(device) {
-            sendFileTo(device.id);
-        };
-
-        function sendFileTo(id) {
-            var transfer = transfers.get(id);
-
-            if (fileTransfer.file) {
-                transfer.sendFile();
-                console.log(fileTransfer.file);
-            }
-            else {
-                console.error("no file");
-            }
-        }
-    });
-
-    app.directive('hfProgressBar', function () {
-        function link(scope, element, attr) {
-            scope.$watch(
-                function() {return scope.activeDevice.currentTime;}, 
-                function(newValue) {
-                    var width = newValue / scope.activeDevice.duration * 100;
-                    element.css({'width' : width + "%"});
-                }
-            );
-        }
-
-        return {
-            link: link,
-        };
-    });
 
 })();
