@@ -21,8 +21,7 @@ var app = angular.module('app', ['ui.router', 'coral', 'fileTransfer', 'config']
     });
 
     app.run( function ($state, welcome) {
-        welcome.connect();
-        $state.go("chat");
+        $state.go("welcome");
     });
 
     app.factory('constants', function(config) {

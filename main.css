@@ -27,12 +27,19 @@ html, body {
 }
 
 
+.bottom {
+	position: absolute;
+	bottom: 0px;
+}
 
 .align-center {
 	text-align: center;
 }
 
 
+.fill-top {
+	height: calc(100% - 40px);
+}
 
 
 
@@ -50,4 +57,100 @@ html, body {
 
 .hover-white:hover {
 	background-color: rgba(255, 255, 255, 0.5);
+}
+
+.border-left {
+	border-left-style: solid;
+	border-left-color: #fff;
+}
+.border-right {
+	border-right-style: solid;
+	border-right-color: #fff;
+}
+
+.border-top {
+	border-top-style: solid;
+	border-top-color: #fff;
+}
+
+.border-bottom {
+	border-bottom-style: solid;
+	border-bottom-color: #fff;
+}
+.default-cursor {
+	cursor: default;
+}
+
+
+.hide-overflow {
+	overflow: hidden;
+}
+
+.scroll-y {
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.auto-overflow {
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.chat-entry.active {
+	background-color: #fff;
+}
+
+.chat-entry {
+	height:50px;
+	line-height:50px;
+	cursor: pointer;
+}
+.chatbox-entry-sent {
+    background: #fff;
+    float: right;
+}
+
+.chatbox-entry-recv {
+    color: #fff;
+    float: left;
+}
+
+.chatbox-entry-recv-color0 {
+	background: #252379 !important;
+}
+
+.uninett-chatbox-entry-recv-color1 { background: #337db1; }
+.uninett-chatbox-entry-recv-color2 { background: #46c1be; }
+.uninett-chatbox-entry-recv-color4 { background: #eb212e; }
+
+.chat-active {
+    color: #fff;
+    background: #eb212e !important;
+}
+.fill-under-name-tag {
+	height: calc(100% - 60px);
+}
+
+.name-tag {
+	height: 60px;
+	line-height: 60px;
+}
+.chatbox-entry {
+    clear: both;
+    margin: 10px;
+    width: 60%;
+    padding: 20px;
+    border: 0;
+    border-radius: 5px;
+	box-shadow: 1px 1px 3px #c0c0c0;
+}
+
+
+.uninett-chatbox-entry-file {
+	color: #fff;
+	background: #f58220;
+}
+
+.uninett-chatbox-entry-file-send {
+	float: right;
 }

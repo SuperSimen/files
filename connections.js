@@ -10,8 +10,10 @@
             list: connections,
             get: getConnection,
             connect: getConnectionAndConnect,
+            myId: "",
             init: function() {
                 signaling.init();
+                this.myId = coral.myId;
                 coral.on("presence", presenceHandler);
                 coral.subscribe("presence", "all", "");
 
@@ -127,6 +129,7 @@
                         message: message,
                     };
                     this.sendData(messageObject);
+                    this.conversation.addMessage(message, coral.myId);
                 },
                 sendFileMessage: function(fileMessage) {
                     var fileMessageObject = {
@@ -146,7 +149,7 @@
 
         function createConversation() {
             var conversation = {
-                history: [{message: "dust", sender:"kjempedust"}],
+                history: [],
                 addMessage: function(message, sender) {
                     this.history.push({message: message, sender: sender});
                 }
@@ -161,7 +164,9 @@
                     transfer.onmessage(message.message);
                 }
                 else if (message.type === "message") {
-
+                    $rootScope.$apply(function() {
+                        connections[id].conversation.addMessage(message.message, id);
+                    });
                 }
                 else {
                     console.error("Received unrecognized p2p message");
