@@ -1,4 +1,5 @@
 
+<div class="col-md-4">
 <div ng-repeat="user in users">
     <div ng-click="clickOnUser(user)">
         <div ng-show="user.online">
@@ -11,5 +12,17 @@
         </div>
     </div>
 </div>
+</div>
 
+
+<div class="col-md-4">
+<div ng-show="activeUser">
+    <div ng-repeat="message in users[activeUser.id].conversation.history">
+        <div ng-click="">
+            {{message.message}}
+            {{message.sender}}
+        </div>
+    </div>
+</div>
+</div>
 <input type="file" ft-file-uploader />

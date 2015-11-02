@@ -109,7 +109,7 @@
                 name: null,
                 connect: function(offer) {
                     this.webrtcConnection = webrtc.connect(id, offer);
-                    var receiver = createReceiver(id);
+                    var receiver = createReceiver(id, transfer);
                     this.webrtcConnection.setReceiver(receiver);
                 },
                 transfer: transfer,
@@ -137,15 +137,35 @@
                 },
                 sendFile: function(file) {
                     this.transfer.sendFile(file);
-                }
+                },
+                conversation: createConversation(),
             };
 
             return connectionObject;
         }
 
-        function createReceiver(id) {
+        function createConversation() {
+            var conversation = {
+                history: [{message: "dust", sender:"kjempedust"}],
+                addMessage: function(message, sender) {
+                    this.history.push({message: message, sender: sender});
+                }
+            };
+
+            return conversation;
+        }
+
+        function createReceiver(id, transfer) {
             return function (message) {
-                console.log(message);
+                if (message.type === "file") {
+                    transfer.onmessage(message.message);
+                }
+                else if (message.type === "message") {
+
+                }
+                else {
+                    console.error("Received unrecognized p2p message");
+                }
             }
         }
 

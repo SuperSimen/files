@@ -5,10 +5,10 @@ var globalUsers;
 
     app.controller('chatController', function($scope, connections) {
 
-        globalUsers = connections.list;
         $scope.users = connections.list;
         $scope.clickOnUser = function(user) {
             var connection = connections.connect(user.id);
+            $scope.activeUser = user;
             connection.sendFile();
             console.log("clicked on " + user);
         };

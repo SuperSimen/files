@@ -105,9 +105,6 @@
                 setupDataChannel(dataChannel, id, messenger);
 
                 createOfferAndSend(id, peerConnection);
-
-                console.log("here");
-
             }
         }
 
@@ -152,10 +149,7 @@
                 else {
                     console.error("No handler for incoming webrtc data");
                 }
-
-                connections[id].transfer.onmessage(JSON.parse(event.data));
             };
-
 
         }
 
@@ -199,9 +193,13 @@
                         this.restartDataSender();
                     }
                 },
+                restartDataSender: function() {
+                    dataSender.sender();
+                }
 
             };
 
+            return dataSender;
         }
 
 
