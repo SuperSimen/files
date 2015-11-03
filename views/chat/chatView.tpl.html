@@ -1,22 +1,23 @@
 
-<div class="col-md-2 fill-height border-right auto-overflow default-cursor">
+<div class="col-md-2 fill-height border-right border-left auto-overflow default-cursor">
     <div ng-repeat="user in users">
         <div ng-hide="isMe(user.id)">
-            <div ng-click="clickOnUser(user)" class="hover-white">
-                <div ng-class="{'active chat-active': isActive(user.id)}" class="row hide-overflow hover-white chat-entry"
-                    <div ng-show="user.online">
-                        <div ng-show="user.name">
-                            {{user.name}}
-                        </div>
+            <div ng-click="clickOnUser(user)" ng-class="{'active chat-active': isActive(user.id)}" class="row padding-left hide-overflow hover-white chat-entry"
+                <div>
+                    <div ng-show="user.name">
+                        {{user.name}}
+                        <span ng-show="getUnread(user.id)">
+                            {{" (" + getUnread(user.id) + ")"}}
+                        </span>
+                    </div>
                     <div ng-hide="user.name">
                         {{user.id}}
-                    </div>
+                        <span ng-show="getUnread(user.id)">
+                            {{" (" + getUnread(user.id) + ")"}}
+                        </span>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="bottom">
-            <input type="file" ng-disabled="!activeUser" ft-file-uploader />
         </div>
     </div>
 </div>
@@ -26,14 +27,43 @@
     <div hf-auto-scroll class="fill-top auto-overflow">
         <div ng-show="activeUser">
             <div ng-repeat="message in users[activeUser.id].conversation.history">
-                <div class="chatbox-entry" ng-class="isMe(message.sender) ? 'chatbox-entry-sent' : 'chatbox-entry-recv chatbox-entry-recv-color0'">
+                <div ng-hide="message.fileId" class="chatbox-entry" ng-class="isMe(message.sender) ? 'chatbox-entry-sent' : 'chatbox-entry-recv chatbox-entry-recv-color1'">
                     {{getUserName(message.sender) + ": " + message.message}} 
+                </div>
+                <div ng-show="getFile(message.fileId)">
+
+                    <div ng-show="message.fileId && !(file.pending && file.sending)" ng-init="file = getFile(message.fileId)">
+                        <div class="chatbox-entry chatbox-entry-filerequest">
+                            <div class="btn-group pull-right">
+                            </div>
+
+                            <div ng-show="file.pending">{{getFriendFromId(file.user).name}} wants to share {{file.filename}} <span class="tab">{{bytesToSize(file.size)}}</span></div>
+
+                            <div ng-hide="file.finished || file.cancelled || file.pending">
+                                <div>{{file.sending && "Sending " + file.filename || "Receiving " + file.filename}} <span class="tab">{{bytesToSize(file.size)}}</span>{{file.failed && " - Failed"}}</div>
+                                <div class="progress" >
+                                    <div class="progress-bar" ng-class="{'progress-bar-danger': file.failed}" ft-progress-bar progress="file.progress">
+                                    </div>
+                                </div>
+                            </div>
+                            <div ng-show="file.finished && !file.cancelled">
+                                {{file.failed && failed || file.filename + (file.sending && ' was sent' || ' was received')}}
+                            </div>
+                            <div ng-show="file.cancelled">
+                                {{"File transfer of " + file.filename}} {{file.writeFailed && " failed. The application was not allowed to store data." || "was cancelled"}}
+                            </div>
+
+                            <button class="btn btn-success" ng-show="file.acceptPossible()" ng-click="file.accept()">Save to Disk</button>
+                            <button class="btn btn-danger" ng-show="file.cancelPossible()" ng-click="file.cancel()">Cancel</button>
+
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="input-group">
-        <input ng-disabled="!activeUser" type="text" ng-model="chatMessage" ng-keydown="chatKeyDown($event)" class="form-control fill-width"/>
-        <span ng-disabled="!activeUser" class="pointer input-group-addon" ng-click="sendFile()">Send file</span>
+        <input ng-disabled="groupDisabled()" placeholder={{placeholder}} type="text" ng-model="chatMessage" ng-keydown="chatKeyDown($event)" class="form-control fill-width"/>
+        <span ng-disabled="groupDisabled()" class="pointer input-group-addon" ng-click="sendFile()">Send file</span>
     </div>
 </div>

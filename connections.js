@@ -2,13 +2,14 @@
 
     'use strict';
 
-    app.factory('connections', function(coral, fileTransfer, signaling, webrtc, $rootScope) {
+    app.factory('connections', function(coral, fileTransfer, signaling, webrtc, $rootScope, $q, $timeout) {
         
         var connections = {};
 
         var returnObject = {
             list: connections,
             get: getConnection,
+            activeConnection: null,
             connect: getConnectionAndConnect,
             myId: "",
             init: function() {
@@ -18,6 +19,15 @@
                 coral.subscribe("presence", "all", "");
 
                 signaling.addMessageHandler(offerHandler, "offer");
+
+                $rootScope.$watch(
+                    function() {return returnObject.activeConnection;},
+                    function(newConnection) {
+                        if (newConnection) {
+                            newConnection.conversation.resetUnread();
+                        }
+                    }
+                );
             }
         };
 
@@ -66,9 +76,6 @@
 
         function offerHandler(from, offer) {
             var connection = getConnection(from);
-            console.log(from);
-            console.log(connection);
-            console.log(connections);
             if (connection) {
                 connection.connect(offer);
             }
@@ -97,7 +104,7 @@
             var connection = createConnectionObject(id, transfer);
 
             transfer.setSender(function(message, callback) {
-                connection.sendFileMessage(message);
+                connection.sendFileMessage(message, callback);
             });
 
             return connection;
@@ -115,9 +122,9 @@
                     this.webrtcConnection.setReceiver(receiver);
                 },
                 transfer: transfer,
-                sendData: function(data) {
+                sendData: function(data, priority, callback) {
                     if (this.webrtcConnection) {
-                        this.webrtcConnection.send(data);
+                        this.webrtcConnection.send(data, priority, callback);
                     }
                     else {
                         console.error("Cannot send. No webrtc connection available");
@@ -128,18 +135,35 @@
                         type: "message",
                         message: message,
                     };
-                    this.sendData(messageObject);
+                    this.sendData(messageObject, true);
                     this.conversation.addMessage(message, coral.myId);
                 },
-                sendFileMessage: function(fileMessage) {
+                sendFileMessage: function(fileMessage, callback) {
                     var fileMessageObject = {
                         type: "file",
                         message: fileMessage,
                     };
-                    this.sendData(fileMessageObject);
+                    this.sendData(fileMessageObject, false, callback);
+                },
+                sendStatusMessage: function(statusMessage) {
+                    var statusMessageObject = {
+                        type: "status",
+                        message: statusMessage,
+                    };
+                    this.sendData(statusMessageObject, true);
+
                 },
                 sendFile: function(file) {
-                    this.transfer.sendFile(file);
+                    
+
+                    var fileId = this.transfer.sendFile(file);
+                    this.sendStatusMessage({fileId: fileId});
+                    this.conversation.addFileMessage(fileId, coral.myId);
+                },
+                openAndSendFile: function() {
+                    openFileSelector().then(function(file) {
+                        connectionObject.sendFile(file);
+                    });
                 },
                 conversation: createConversation(),
             };
@@ -150,9 +174,23 @@
         function createConversation() {
             var conversation = {
                 history: [],
+                unread: 0,
+                add: function(object) {
+                    this.history.push(object);
+                },
                 addMessage: function(message, sender) {
-                    this.history.push({message: message, sender: sender});
+                    this.add({message: message, sender: sender});
+                },
+                addFileMessage: function(fileId, sender) {
+                    this.add({fileId: fileId, sender: sender});
+                },
+                incrementUnread: function() {
+                    this.unread++;
+                },
+                resetUnread: function() {
+                    this.unread = 0;
                 }
+
             };
 
             return conversation;
@@ -166,7 +204,15 @@
                 else if (message.type === "message") {
                     $rootScope.$apply(function() {
                         connections[id].conversation.addMessage(message.message, id);
+                        incrementIfNotActive(id);
                     });
+                }
+                else if (message.type === "status") {
+                    if (message.message.fileId) {
+                        connections[id].conversation.addFileMessage(message.message.fileId, id);
+                        incrementIfNotActive(id);
+
+                    }
                 }
                 else {
                     console.error("Received unrecognized p2p message");
@@ -174,6 +220,52 @@
             }
         }
 
+        function incrementIfNotActive(id) {
+                if (connections[id] !== returnObject.activeConnection) {
+                    connections[id].conversation.incrementUnread();
+                }
+        }
+
+        var el = null;
+
+        function openFileSelector () {
+
+            var defer = $q.defer();
+
+            function onfilesubmitted(event) {
+                if(el.files.length > 0) {
+                    defer.resolve(el.files[0]);
+                } else {
+                    defer.reject('no files available');
+                }
+            }
+
+            if(!el) {
+                el = document.createElement('input');
+
+                el.id = "fileupload-faux";
+                el.setAttribute('type', 'file');
+
+                el.style.position = "fixed";
+                el.style.left = "-100px";
+
+                document.body.appendChild(el);
+            }
+
+            el.onchange = onfilesubmitted;
+
+            var e =  new MouseEvent('click', {
+                'view': window,
+                'bubbles': true,
+                'cancelable': true
+            });
+
+            $timeout(function() {
+                el.dispatchEvent(e);
+            },0);
+
+            return defer.promise;
+        };
         return returnObject;
     });
 })();

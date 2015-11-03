@@ -21,9 +21,9 @@
             continueConnect(peerConnection, iceCandidates, to, messenger, offer);
 
             var connection = {
-                send: function(message) {
+                send: function(message, priority, callback) {
                     if (messenger.outgoing) {
-                        messenger.outgoing(message);
+                        messenger.outgoing(message, priority, callback);
                     }
                     else {
                         console.error("cannot send message. No sender function");
@@ -48,13 +48,11 @@
                 readyToSend: false,
                 setReadyToSend: function(ready) {
                     this.readyToSend = ready;
-                    console.log("ready to send");
                     if (ready && this.ICECandidates.length) {
                         this.sendAndEmptyIceCandidates();
                     }
                 },
                 addIceCandidate: function (candidate) {
-                    console.log("adding ice candidate");
                     this.ICECandidates.push(candidate);
                     if (this.readyToSend) {
                         this.sendAndEmptyIceCandidates();
@@ -80,8 +78,6 @@
 
         function continueConnect(peerConnection, iceCandidates, id, messenger, offer) {
             peerConnection.onicecandidate = function(event) {
-                console.log("on ice candidate");
-                console.log(event);
                 if (event.candidate) {
                     iceCandidates.addIceCandidate(event.candidate);
                 }
@@ -110,7 +106,6 @@
 
         function createAnswerHandler(peerConnection, iceCandidates) {
             return function (from, answer) {
-                console.log("received answer");
                 setRemoteDescription(peerConnection, answer);
                 iceCandidates.setReadyToSend(true);
             }
@@ -118,7 +113,6 @@
 
         function createIceHandler(peerConnection) {
             return function (from, iceCandidate) {
-                console.log("received ice");
                 var ice = new RTCIceCandidate(iceCandidate);
                 peerConnection.addIceCandidate(
                     ice,
@@ -136,13 +130,12 @@
             dataChannel.onopen = function() {
                 console.log("data channel opened");
 
-                messenger.outgoing = function(message) {
-                    dataSender.addToQueue(message);
+                messenger.outgoing = function(message, priority, callback) {
+                    dataSender.addToQueue(message, priority, callback);
                 }
             };
 
             dataChannel.onmessage = function(event) {
-                console.log(event.data);
                 if (messenger.incoming) {
                     messenger.incoming(JSON.parse(event.data));
                 }
@@ -173,7 +166,9 @@
                 },
                 sender: function() {
                     while(this.queue.length) {
-                        var success = this.send(this.queue[0]);
+                        var data = this.queue[0].data;
+                        var callback = this.queue[0].callback;
+                        var success = this.send(data, callback);
                         if (!success) {
                             $timeout(this.restartDataSender, 100);
                             return;
@@ -185,8 +180,14 @@
                     this.sendingData = false;
 
                 },
-                addToQueue: function(data) {
-                    this.queue.push(data);
+                addToQueue: function(data, priority, callback) {
+                    var objectToSend = {data: data, callback: callback};
+                    if (priority) {
+                        this.queue.unshift(objectToSend);
+                    }
+                    else {
+                        this.queue.push(objectToSend);
+                    }
 
                     if (!this.sendingData) {
                         this.sendingData = true;

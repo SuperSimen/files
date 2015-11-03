@@ -119,9 +119,9 @@ html, body {
 	background: #252379 !important;
 }
 
-.uninett-chatbox-entry-recv-color1 { background: #337db1; }
-.uninett-chatbox-entry-recv-color2 { background: #46c1be; }
-.uninett-chatbox-entry-recv-color4 { background: #eb212e; }
+.chatbox-entry-recv-color1 { background: #337db1; }
+.chatbox-entry-recv-color2 { background: #46c1be; }
+.chatbox-entry-recv-color4 { background: #eb212e; }
 
 .chat-active {
     color: #fff;
@@ -143,6 +143,10 @@ html, body {
     border: 0;
     border-radius: 5px;
 	box-shadow: 1px 1px 3px #c0c0c0;
+}
+
+.padding-left {
+    padding-left: 20px;
 }
 
 
