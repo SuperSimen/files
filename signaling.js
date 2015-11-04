@@ -24,32 +24,30 @@
                 this.handlers[type].push(handlerRecord);
             },
             mainHandler: function(data) {
-                console.log(data);
-
                 var message = data.message.message;
                 var from = data.fromId;
                 var type = data.message.type;
 
                 var handlers = messageHandlers.handlers[type];
 
-                console.log(type);
-
                 if (handlers) {
-                    var currentHandler;
+                    var currentHandler, noHandler = true;
+
                     for (var i in handlers) {
                         currentHandler = handlers[i];
-                        console.log(currentHandler);
                         if (currentHandler.sender) {
                             if (currentHandler.sender === from) {
                                 currentHandler.handler(from, message);
-                            }
-                            else {
-                                noHandlerError(data);
+                                noHandler = false;
                             }
                         }
                         else {
                             currentHandler.handler(from, message);
+                            noHandler = false;
                         }
+                    }
+                    if (noHandler) {
+                        noHandlerError(data);
                     }
                 }
                 else {
@@ -59,7 +57,9 @@
         };
 
         function noHandlerError(data) {
-            console.error("No suitable handler for incoming data: " + data);
+            console.error("No suitable handler for incoming data: ");
+            console.log(data);
+            console.log(messageHandlers);
         }
 
         function createHandlerRecord(handler, type, sender) {
